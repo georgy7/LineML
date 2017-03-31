@@ -1,0 +1,15 @@
+{
+    "name": "stringplate",
+    "description": "HTML-like layout in a single line.",
+    "license": "BSL-1.0",
+    "authors": [
+        "Георгий Устинов"
+    ],
+
+    "targetName": "stringplate",
+    "targetType": "staticLibrary",
+    "targetPath": "lib",
+    "dependencies": {
+        "pegged": "~>0.4.1"
+    }
+}
