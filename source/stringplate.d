@@ -1,9 +1,9 @@
-module stringplate;
+module lineml;
 
 import pegged.grammar;
 
 mixin(grammar(`
-    Stringplate:
+    LineML:
         TAGS        <- (SPACES? TAG "," SPACES?)* TAG SPACES?
         TAG         <- SELECTOR BODY?
         BODY        <- "(" TAGS ")"
@@ -18,7 +18,7 @@ mixin(grammar(`
 
 unittest {
     import std.algorithm.searching;
-    enum p = Stringplate("html");
+    enum p = LineML("html");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".TAGS"));
     assert(p.children[0].children.length == 1);
@@ -33,7 +33,7 @@ unittest {
 
 unittest {
     import std.algorithm.searching;
-    enum p = Stringplate("#myId");
+    enum p = LineML("#myId");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".TAGS"));
     assert(p.children[0].children.length == 1);
@@ -48,7 +48,7 @@ unittest {
 
 unittest {
     import std.algorithm.searching;
-    enum p = Stringplate(".myClass");
+    enum p = LineML(".myClass");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".TAGS"));
     assert(p.children[0].children.length == 1);
@@ -64,7 +64,7 @@ unittest {
 unittest {
     import std.algorithm.searching;
 
-    enum p = Stringplate("#z, #f, .item,  .item");
+    enum p = LineML("#z, #f, .item,  .item");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".TAGS"));
 
@@ -127,7 +127,7 @@ unittest {
 unittest {
     import std.stdio;
     //enum p = Stringplate(" #d(#z, #f(.item, .item, .item, .item, .item))");
-    enum p = Stringplate("   #z, #f, .item, .item  ");
+    enum p = LineML("   #z, #f, .item, .item  ");
     foreach(ref child; p.children) {
         writeln(child);
     }
