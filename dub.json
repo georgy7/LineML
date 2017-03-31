@@ -1,12 +1,12 @@
 {
-    "name": "stringplate",
-    "description": "HTML-like layout in a single line.",
+    "name": "lineml",
+    "description": "HTML-like markup in a single line.",
     "license": "BSL-1.0",
     "authors": [
         "Георгий Устинов"
     ],
 
-    "targetName": "stringplate",
+    "targetName": "lineml",
     "targetType": "staticLibrary",
     "targetPath": "lib",
     "dependencies": {
