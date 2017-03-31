@@ -1,4 +1,4 @@
-# stringplate
+# LineML
 
 HTML-like templates in single line.
 Inspired by HAML, shpaml, DIET templates.
