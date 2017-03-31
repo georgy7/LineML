@@ -9,19 +9,64 @@ mixin(grammar(`
         BODY        <- "(" TAGS ")"
         SPACES      <- ~(SPACE*)
         SPACE       <- " " / "\t" / "\n" / "\r"
-        SELECTOR    <- (TAGNAME ID CLASS*) / (TAGNAME CLASS* ID) / (CLASS* ID) / (CLASS* ID) / CLASS*
+        SELECTOR    <- (TAGNAME ID? CLASS*) / (TAGNAME CLASS* ID?) / (CLASS* ID) / (CLASS* ID) / CLASS+
         TAGNAME     <- ~([a-z]+)
-        ID          <- ~("#" [a-z]+)
-        CLASS       <- ~("." [a-z]+)
+        ID          <- ~("#" [a-zA-Z]+)
+        CLASS       <- ~("." [a-zA-Z]+)
 `));
 
 
 unittest {
     import std.algorithm.searching;
+    enum p = Stringplate("html");
+    assert(p.children.length == 1);
+    assert(p.children[0].name.endsWith(".TAGS"));
+    assert(p.children[0].children.length == 1);
+    assert(p.children[0].children[0].name.endsWith(".TAG"));
+    assert(p.children[0].children[0].children.length == 1);
+    assert(p.children[0].children[0].children[0].name.endsWith(".SELECTOR"));
+    assert(p.children[0].children[0].children[0].children.length == 1);
+    assert(p.children[0].children[0].children[0].children[0].name.endsWith(".TAGNAME"));
+    assert(p.children[0].children[0].children[0].children[0].matches.length == 1);
+    assert(p.children[0].children[0].children[0].children[0].matches[0] == "html");
+}
+
+unittest {
+    import std.algorithm.searching;
+    enum p = Stringplate("#myId");
+    assert(p.children.length == 1);
+    assert(p.children[0].name.endsWith(".TAGS"));
+    assert(p.children[0].children.length == 1);
+    assert(p.children[0].children[0].name.endsWith(".TAG"));
+    assert(p.children[0].children[0].children.length == 1);
+    assert(p.children[0].children[0].children[0].name.endsWith(".SELECTOR"));
+    assert(p.children[0].children[0].children[0].children.length == 1);
+    assert(p.children[0].children[0].children[0].children[0].name.endsWith(".ID"));
+    assert(p.children[0].children[0].children[0].children[0].matches.length == 1);
+    assert(p.children[0].children[0].children[0].children[0].matches[0] == "#myId");
+}
+
+unittest {
+    import std.algorithm.searching;
+    enum p = Stringplate(".myClass");
+    assert(p.children.length == 1);
+    assert(p.children[0].name.endsWith(".TAGS"));
+    assert(p.children[0].children.length == 1);
+    assert(p.children[0].children[0].name.endsWith(".TAG"));
+    assert(p.children[0].children[0].children.length == 1);
+    assert(p.children[0].children[0].children[0].name.endsWith(".SELECTOR"));
+    assert(p.children[0].children[0].children[0].children.length == 1);
+    assert(p.children[0].children[0].children[0].children[0].name.endsWith(".CLASS"));
+    assert(p.children[0].children[0].children[0].children[0].matches.length == 1);
+    assert(p.children[0].children[0].children[0].children[0].matches[0] == ".myClass");
+}
+
+unittest {
+    import std.algorithm.searching;
 
     enum p = Stringplate("#z, #f, .item,  .item");
-    assert(p.children[0].name.endsWith(".TAGS"));
     assert(p.children.length == 1);
+    assert(p.children[0].name.endsWith(".TAGS"));
 
     enum tc = p.children[0].children;
     assert(tc.length == 7);
