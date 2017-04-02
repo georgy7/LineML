@@ -373,7 +373,8 @@ private ParseTree[] childrenTags(ParseTree a) @safe {
     return result;
 }
 
-T lmlToNode(T : LineMLNode)(string markup) @safe {
+T lmlToNode(T : LineMLNode)(string markup) @trusted {
+    import std.stdio;
     auto t = lmlParse(markup);
 
     assert(t.children.length == 1);
@@ -381,44 +382,63 @@ T lmlToNode(T : LineMLNode)(string markup) @safe {
     assert(t.children[0].children.length == 1);
     assert(t.children[0].children[0].name.endsWith(".TAG"));
 
-    ParseTree[] parentStack = [];
-    T[] resultParentStack = [];
-    int[] childIndex = [];
+    class StackItem {
+        ParseTree tag;
+        T result;
+        int childIndex;
+
+        this() {
+        }
+
+        this(ParseTree tag, T result, int childIndex) {
+            this.tag = tag;
+            this.result = result;
+            this.childIndex = childIndex;
+        }
+    }
+
+    StackItem[] stack = [];
     T result = null;
 
-    parentStack ~= t.children[0].children[0];
-    childIndex ~= -1;
+    // Our start point.
+    stack ~= new StackItem(t.children[0].children[0], null, -1);
 
-    while (parentStack.length > 0) {
-        auto currentTag = parentStack[$-1];
-        auto chTags = currentTag.childrenTags;
-        if (childIndex[$-1] == -1) {
-            T r = createNodeFromSelector!T(currentTag);
-            resultParentStack ~= r;
-            if (result is null) {
-                result = resultParentStack[0];
+    while (stack.length > 0) {
+        auto current = stack[$-1];
+        auto chTags = current.tag.childrenTags;
+        if (current.childIndex == -1) {
+            writeln("mode1: chTags.len = ", chTags.length);
+            assert(current.result is null);
+            current.result = createNodeFromSelector!T(current.tag);
+            if (result is null) { // We are at the top-level.
+                result = current.result;
             }
             if (chTags.length < 1) {
-                parentStack.length--;
-                childIndex.length--;
-                resultParentStack.length--;
-                if (childIndex.length > 0 && childIndex[$-1] >= 0) {
-                    childIndex[$-1]++;
+                stack.length--;
+                if (stack.length > 0) {
+                    assert(stack[$-1].childIndex != -1);
+                    assert(stack[$-1].result !is null);
+                    stack[$-1].result.children ~= current.result;
+                    stack[$-1].childIndex++;
                 }
             } else {
-                childIndex[$-1] = 0;
+                current.childIndex = 0;
             }
-        } else if (childIndex[$-1] > chTags.length - 1) {
-            parentStack.length--;
-            childIndex.length--;
-            resultParentStack.length--;
-            if (childIndex.length > 0 && childIndex[$-1] >= 0) {
-                childIndex[$-1]++;
-            }
+        } else if (current.childIndex < chTags.length) {
+            writeln("mode2 ", current.childIndex);
+            StackItem nextLevel = new StackItem();
+            nextLevel.tag = chTags[current.childIndex];
+            nextLevel.childIndex = -1;
+            stack ~= nextLevel;
         } else {
-            auto iTag = chTags[childIndex[$-1]];
-            currentTag.children ~= iTag;
-            childIndex[$-1]++;
+            writeln("mode3");
+            stack.length--;
+            if (stack.length > 0) {
+                assert(stack[$-1].childIndex != -1);
+                assert(stack[$-1].result !is null);
+                stack[$-1].result.children ~= current.result;
+                stack[$-1].childIndex++;
+            }
         }
     }
     return result;
