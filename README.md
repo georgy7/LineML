@@ -33,8 +33,7 @@ and transform into this (or a structure, representing this):
 So, it will not support
 
 * tag content,
-* custom attributes,
-* maybe even tag names.
+* custom attributes.
 
 ### Example #2
 
