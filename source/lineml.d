@@ -34,6 +34,10 @@ class LineMLParseException : Exception {
         super("Parsing failure.", file, line);
         this._ptree = ptree;
     }
+    this(string mgs, ParseTree ptree, string file = __FILE__, size_t line = __LINE__) pure nothrow @safe {
+        super(mgs, file, line);
+        this._ptree = ptree;
+    }
     @property const(ParseTree) parseTree() { return _ptree; }
 }
 
@@ -352,6 +356,9 @@ private T createNodeFromSelector(T : LineMLNode)(ParseTree a) @safe {
     if (a.name.endsWith(".TAG")) {
         assert(a.children[0].name.endsWith(".SELECTOR"));
         return selectorToNode!T(a.children[0]);
+    } else if (a.name.endsWith(".REPEATER")) {
+        assert(a.children[0].name.endsWith(".RSELECTOR"));
+        return selectorToNode!T(a.children[0]);
     }
     return null;
 }
@@ -366,6 +373,18 @@ private ParseTree[] childrenTags(ParseTree a) @safe {
                 auto t = c.children[0];
                 if (t.name.endsWith(".TAG")) {
                     result ~= t;
+                } else if (t.name.endsWith(".REPEATER")) {
+                    auto count = 1;
+                    if (t.children.length >= 2) {
+                        assert(t.children[1].name.endsWith(".COUNT"));
+                        count = to!int(t.children[1].matches[0]);
+                        if (count < 1) {
+                            throw new LineMLParseException("Repeater must have the count >= 1.", t);
+                        }
+                        foreach (i; 0 .. count) {
+                            result ~= t;
+                        }
+                    }
                 }
             }
         }
@@ -374,7 +393,7 @@ private ParseTree[] childrenTags(ParseTree a) @safe {
 }
 
 T lmlToNode(T : LineMLNode)(string markup) @trusted {
-    import std.stdio;
+//    import std.stdio;
     auto t = lmlParse(markup);
 
     assert(t.children.length == 1);
@@ -405,9 +424,9 @@ T lmlToNode(T : LineMLNode)(string markup) @trusted {
 
     while (stack.length > 0) {
         auto current = stack[$-1];
-        auto chTags = current.tag.childrenTags;
+        auto chTags = childrenTags(current.tag);
         if (current.childIndex == -1) {
-            writeln("mode1: chTags.len = ", chTags.length);
+//            writeln("mode1: chTags.len = ", chTags.length);
             assert(current.result is null);
             current.result = createNodeFromSelector!T(current.tag);
             if (result is null) { // We are at the top-level.
@@ -425,13 +444,13 @@ T lmlToNode(T : LineMLNode)(string markup) @trusted {
                 current.childIndex = 0;
             }
         } else if (current.childIndex < chTags.length) {
-            writeln("mode2 ", current.childIndex);
+//            writeln("mode2 ", current.childIndex);
             StackItem nextLevel = new StackItem();
             nextLevel.tag = chTags[current.childIndex];
             nextLevel.childIndex = -1;
             stack ~= nextLevel;
         } else {
-            writeln("mode3");
+//            writeln("mode3");
             stack.length--;
             if (stack.length > 0) {
                 assert(stack[$-1].childIndex != -1);
@@ -485,11 +504,8 @@ unittest {
 }
 
 unittest {
-    import std.stdio;
-    writeln("--------- THIS");
     auto input = "#d(#z, #f(.item, .item, .item, .item, .item))";
     auto result = lmlToNode!LineMLNode(input);
-    writeln(result);
     assert(result.id == "d");
     assert(result.children.length == 2);
     assert(result.children[0].id == "z");
@@ -503,12 +519,14 @@ unittest {
     assert(items[2].classes == ["item"]);
     assert(items[3].classes == ["item"]);
     assert(items[4].classes == ["item"]);
-    writeln("--- /THIS");
 }
 
 unittest {
+//    import std.stdio;
+//    writeln("--------- THIS");
     auto input = "#d(#z, #f(.item:5))";
     auto result = lmlToNode!LineMLNode(input);
+//    writeln(result);
     assert(result.id == "d");
     assert(result.children.length == 2);
     assert(result.children[0].id == "z");
@@ -522,6 +540,7 @@ unittest {
     assert(items[2].classes == ["item"]);
     assert(items[3].classes == ["item"]);
     assert(items[4].classes == ["item"]);
+//    writeln("--- /THIS");
 }
 
 /*
