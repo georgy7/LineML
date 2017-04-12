@@ -93,8 +93,11 @@ class LineMLNode {
 }
 
 enum LmlHtmlFormat {
-    LINE
+    LINE,
+    SPACES_4
 }
+
+private string spaces4Indent = "    ";
 
 unittest {
     enum p = LineML("html");
@@ -590,21 +593,37 @@ private string parseTreeToHtml(LineMLNode rootNode, LmlHtmlFormat format) {
     while (stack.length > 0) {
         auto current = stack[$-1];
         if (current.childIndex == -1) {
+            if (format == LmlHtmlFormat.SPACES_4) {
+                foreach (i; 0 .. (stack.length - 1)) {
+                    result ~= spaces4Indent;
+                }
+            }
             result ~= openTag(current.node);
             if (stack[$-1].node.children.length > 0) {
+                if (format == LmlHtmlFormat.SPACES_4) {
+                    result ~= "\n";
+                }
                 stack[$-1].childIndex++;
             } else {
                 stack[$-1].childIndex = -2;
             }
-        } else if (current.childIndex == -2) {
+        } else if (current.childIndex <= -2) {
+            if (format == LmlHtmlFormat.SPACES_4 && current.childIndex == -3) {
+                foreach (i; 0 .. (stack.length - 1)) {
+                    result ~= spaces4Indent;
+                }
+            }
             result ~= closeTag(current.node);
+            if (format == LmlHtmlFormat.SPACES_4) {
+                result ~= "\n";
+            }
             stack.length--;
             if (stack.length > 0) {
                 assert(stack[$-1].childIndex != -1);
                 assert(stack[$-1].childIndex != -2);
                 stack[$-1].childIndex++;
                 if (stack[$-1].childIndex >= stack[$-1].node.children.length) {
-                    stack[$-1].childIndex = -2;
+                    stack[$-1].childIndex = -3;
                 }
             }
         } else {
@@ -627,4 +646,21 @@ unittest {
             "<div class=\"item\"></div><div class=\"item\"></div>" ~
             "<div class=\"item\"></div></div></div>";
     expected.should.equal(lmlToHtml(input, LmlHtmlFormat.LINE));
+}
+
+unittest {
+    import fluentasserts.core.base;
+    auto input = "#d(#z, #f(.item, .item, .item, .item, .item))";
+    auto expected = "" ~
+            "<div id=\"d\">\n" ~
+            "    <div id=\"z\"></div>\n" ~
+            "    <div id=\"f\">\n" ~
+            "        <div class=\"item\"></div>\n" ~
+            "        <div class=\"item\"></div>\n" ~
+            "        <div class=\"item\"></div>\n" ~
+            "        <div class=\"item\"></div>\n" ~
+            "        <div class=\"item\"></div>\n" ~
+            "    </div>\n" ~
+            "</div>\n";
+    expected.should.equal(lmlToHtml(input, LmlHtmlFormat.SPACES_4));
 }
