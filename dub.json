@@ -1,6 +1,6 @@
 {
     "name": "lineml",
-    "description": "HTML-like markup in a single line.",
+    "description": "HTML-like empty markup in a single line.",
     "license": "BSL-1.0",
     "authors": [
         "Георгий Устинов"
@@ -10,6 +10,7 @@
     "targetType": "staticLibrary",
     "targetPath": "lib",
     "dependencies": {
-        "pegged": "~>0.4.1"
+        "pegged": "~>0.4.1",
+        "fluent-asserts:core": "~>0.3.0"
     }
 }

@@ -543,21 +543,88 @@ unittest {
 //    writeln("--- /THIS");
 }
 
-/*
-private string parseTreeToHtml() {
-    return "";
+private string openTag(LineMLNode node) {
+    string result = "<";
+    if (node.tagName is null) {
+        result ~= "div";
+    } else {
+        result ~= node.tagName;
+    }
+    if (node.id !is null) {
+        result ~= " id=\"" ~ node.id ~ "\"";
+    }
+    assert(node.classes !is null);
+    if (node.classes.length > 0) {
+        result ~= " class=\"";
+        result ~= join(node.classes, " ");
+        result ~= "\"";
+    }
+    result ~= ">";
+    return result;
+}
+
+private string closeTag(LineMLNode node) {
+    string result = "</";
+    if (node.tagName is null) {
+        result ~= "div";
+    } else {
+        result ~= node.tagName;
+    }
+    result ~= ">";
+    return result;
+}
+
+private string parseTreeToHtml(LineMLNode rootNode, LmlHtmlFormat format) {
+    string result = "";
+
+    class HtmlStackItem {
+        LineMLNode node;
+        int childIndex = -1;
+
+        this(LineMLNode n) {
+            node = n;
+        }
+    }
+    HtmlStackItem[] stack = [new HtmlStackItem(rootNode)];
+
+    while (stack.length > 0) {
+        auto current = stack[$-1];
+        if (current.childIndex == -1) {
+            result ~= openTag(current.node);
+            if (stack[$-1].node.children.length > 0) {
+                stack[$-1].childIndex++;
+            } else {
+                stack[$-1].childIndex = -2;
+            }
+        } else if (current.childIndex == -2) {
+            result ~= closeTag(current.node);
+            stack.length--;
+            if (stack.length > 0) {
+                assert(stack[$-1].childIndex != -1);
+                assert(stack[$-1].childIndex != -2);
+                stack[$-1].childIndex++;
+                if (stack[$-1].childIndex >= stack[$-1].node.children.length) {
+                    stack[$-1].childIndex = -2;
+                }
+            }
+        } else {
+            stack ~= new HtmlStackItem(stack[$-1].node.children[stack[$-1].childIndex]);
+        }
+    }
+    return result;
 }
 
 auto lmlToHtml(string markup, LmlHtmlFormat format) {
-    return parseTreeToHtml(tree);
+    LineMLNode tree = lmlToNode!LineMLNode(markup);
+    return parseTreeToHtml(tree, format);
 }
 
 unittest {
+    import fluentasserts.core.base;
     auto input = "#d(#z, #f(.item, .item, .item, .item, .item))";
     auto expected = "<div id=\"d\"><div id=\"z\"></div><div id=\"f\">" ~
             "<div class=\"item\"></div><div class=\"item\"></div>" ~
             "<div class=\"item\"></div><div class=\"item\"></div>" ~
             "<div class=\"item\"></div></div></div>";
-    assert(lmlToHtml(input, LmlHtmlFormat.LINE) == expected);
+    expected.should.equal(lmlToHtml(input, LmlHtmlFormat.LINE));
 }
-*/
