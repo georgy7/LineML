@@ -1,13 +1,13 @@
 {
     "name": "lineml",
-    "description": "HTML-like empty markup in a single line.",
+    "description": "HTML-like markup language for the single line layouts.",
     "license": "BSL-1.0",
     "authors": [
         "Георгий Устинов"
     ],
 
     "targetName": "lineml",
-    "targetType": "staticLibrary",
+    "targetType": "library",
     "targetPath": "lib",
     "dependencies": {
         "pegged": "~>0.4.1",

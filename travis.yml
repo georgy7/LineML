@@ -1,0 +1,20 @@
+sudo: required
+
+language: d
+
+os:
+ - linux
+
+d:
+ - dmd-2.073.0
+ - ldc-1.1.0
+
+before_install:
+ - sudo apt-get -y install ppa-purge
+ - sudo ppa-purge ppa:rwky/redis; echo
+ - sudo add-apt-repository ppa:lyrasis/precise-backports -y
+ - sudo apt-get update
+ - sudo apt-get install libwebp-dev
+
+script:
+ - ./travis-ci.sh
