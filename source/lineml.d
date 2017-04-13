@@ -525,11 +525,8 @@ unittest {
 }
 
 unittest {
-//    import std.stdio;
-//    writeln("--------- THIS");
     auto input = "#d(#z, #f(.item:5))";
     auto result = lmlToNode!LineMLNode(input);
-//    writeln(result);
     assert(result.id == "d");
     assert(result.children.length == 2);
     assert(result.children[0].id == "z");
@@ -543,7 +540,55 @@ unittest {
     assert(items[2].classes == ["item"]);
     assert(items[3].classes == ["item"]);
     assert(items[4].classes == ["item"]);
-//    writeln("--- /THIS");
+}
+
+private class MyTestNode : LineMLNode {
+    private string _f;
+
+    @property string myField() @safe pure nothrow {
+        return _f;
+    }
+    @property void myField(string v) @safe pure nothrow {
+        _f = v;
+    }
+}
+
+unittest {
+    auto input = "#d(#z, #f(.item:5))";
+    auto result = lmlToNode!MyTestNode(input);
+
+    assert((cast(MyTestNode) result) !is null);
+    assert((cast(Exception) result) is null);
+
+    assert(result.id == "d");
+    assert(result.children.length == 2);
+
+    (cast(MyTestNode) result.children[0]).myField = "123";
+    assert("123" == (cast(MyTestNode) result.children[0]).myField);
+
+    assert((cast(MyTestNode) (result.children[0])) !is null);
+    assert(result.children[0].id == "z");
+    assert(result.children[0].children.length == 0);
+
+    assert((cast(MyTestNode) (result.children[1])) !is null);
+    assert(result.children[1].id == "f");
+    assert(result.children[1].children.length == 5);
+    auto items = result.children[1].children;
+    assert(items.length == 5);
+
+    assert((cast(MyTestNode) (items[0])) !is null);
+    assert(items[0].classes == ["item"]);
+    assert((cast(MyTestNode) (items[1])) !is null);
+    assert(items[1].classes == ["item"]);
+    assert((cast(MyTestNode) (items[2])) !is null);
+    assert(items[2].classes == ["item"]);
+    assert((cast(MyTestNode) (items[3])) !is null);
+    assert(items[3].classes == ["item"]);
+    assert((cast(MyTestNode) (items[4])) !is null);
+    assert(items[4].classes == ["item"]);
+
+    (cast(MyTestNode) items[4]).myField = "Some text";
+    assert("Some text" == (cast(MyTestNode) items[4]).myField);
 }
 
 private string openTag(LineMLNode node) {
