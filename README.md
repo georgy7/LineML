@@ -103,7 +103,7 @@ You can parse your markup without making HTML.
 LineMLNode result = lmlToNode!LineMLNode(input);
 ```
 
-But the main purpose of the package is to use a `LineMLNode` subclass to generate the tree.
+But the main purpose of the package is to use `LineMLNode` subclasses to generate the trees.
 Then, you can populate the objects and use them programmatically anyway you want it.
 
 ## License
