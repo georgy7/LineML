@@ -22,7 +22,7 @@ mixin(grammar(`
         SPACE       <- " " / "\t" / "\n" / "\r"
         SELECTOR    <- (TAGNAME CLASS* ID? CLASS*) / (CLASS* ID CLASS*) / CLASS+
         RSELECTOR   <- (TAGNAME CLASS*) / CLASS+
-        TAGNAME     <- ~([a-z]+)
+        TAGNAME     <- ~([a-z]+("-"*[a-z0-9]+)*)
         ID          <- ~("#" [a-zA-Z]+)
         CLASS       <- ~("." [a-zA-Z]+)
         COUNT       <- ~([0-9]+)
@@ -111,6 +111,36 @@ unittest {
     assert(p.children[0].children[0].children[0].children[0].name.endsWith(".TAGNAME"));
     assert(p.children[0].children[0].children[0].children[0].matches.length == 1);
     assert(p.children[0].children[0].children[0].children[0].matches[0] == "html");
+}
+
+unittest {
+    import fluent.asserts;
+    enum p = LineML("my-custom-tag");
+    p.children.length.should.equal(1);
+    p.children[0].name.should.endWith(".MARKUP");
+    p.children[0].children.length.should.equal(1);
+    p.children[0].children[0].name.should.endWith(".TAG");
+    p.children[0].children[0].children.length.should.equal(1);
+    p.children[0].children[0].children[0].name.should.endWith(".SELECTOR");
+    p.children[0].children[0].children[0].children.length.should.equal(1);
+    p.children[0].children[0].children[0].children[0].name.should.endWith(".TAGNAME");
+    p.children[0].children[0].children[0].children[0].matches.length.should.equal(1);
+    p.children[0].children[0].children[0].children[0].matches[0].should.equal("my-custom-tag");
+}
+
+unittest {
+    import fluent.asserts;
+    enum p = LineML("mycustomtag3434");
+    p.children.length.should.equal(1);
+    p.children[0].name.should.endWith(".MARKUP");
+    p.children[0].children.length.should.equal(1);
+    p.children[0].children[0].name.should.endWith(".TAG");
+    p.children[0].children[0].children.length.should.equal(1);
+    p.children[0].children[0].children[0].name.should.endWith(".SELECTOR");
+    p.children[0].children[0].children[0].children.length.should.equal(1);
+    p.children[0].children[0].children[0].children[0].name.should.endWith(".TAGNAME");
+    p.children[0].children[0].children[0].children[0].matches.length.should.equal(1);
+    p.children[0].children[0].children[0].children[0].matches[0].should.equal("mycustomtag3434");
 }
 
 unittest {
