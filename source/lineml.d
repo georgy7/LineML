@@ -9,29 +9,41 @@ mixin(grammar(`
     LineML:
         MARKUP      <- SPACES? TAG SPACES? eoi
         TAG         <- SELECTOR BODY?
-        BODY        <- "(" ANYTAGS ")"
-        ANYTAGS     <- (SPACES? ANYTAG "," SPACES?)* ANYTAG SPACES?
-        ANYTAG      <- REPEATER / TAG
+        BODY        <- "(" WITHOUTWHITESPACES? ANYTAGS WITHOUTWHITESPACES? ")"
+        ANYTAGS     <- (SPACES? ANYTAG NEXTSEPARATOR SPACES?)* ANYTAG SPACES?
+        ANYTAG      <- REPEATER / TAG / TEXTNODE
         REPEATER    <- RSELECTOR ":" COUNT RBODY?
 
-        RBODY       <- "(" RTAGS ")"
-        RTAGS       <- (SPACES? RTAG "," SPACES?)* RTAG SPACES?
-        RTAG        <- REPEATER / (RSELECTOR RBODY?)
+        RBODY       <- "(" WITHOUTWHITESPACES? RTAGS WITHOUTWHITESPACES? ")"
+        RTAGS       <- (SPACES? RTAG NEXTSEPARATOR SPACES?)* RTAG SPACES?
+        RTAG        <- REPEATER / (RSELECTOR RBODY?) / TEXTNODE
 
         SPACES      <- ~(SPACE*)
         SPACE       <- " " / "\t" / "\n" / "\r"
         SELECTOR    <- (TAGNAME CLASS* ID? CLASS*) / (CLASS* ID CLASS*) / CLASS+
         RSELECTOR   <- (TAGNAME CLASS*) / CLASS+
-        TAGNAME     <- ~([a-z]+("-"*[a-z0-9]+)*)
-        ID          <- ~("#" [a-zA-Z]+)
-        CLASS       <- ~("." [a-zA-Z]+)
+        TAGNAME     <- ~([a-z]+ ("-"*[a-z0-9]+)*)
+        ID          <- ~("#" [a-zA-Z]+ ("_"*[a-zA-Z0-9]+)*)
+        CLASS       <- ~("." [a-zA-Z]+ ("-"*[a-zA-Z0-9]+)*)
         COUNT       <- ~([0-9]+)
+
+        NEXTSEPARATOR   <- (SPACES? INLINENEXT) / FORMATTEDNEXT
+        FORMATTEDNEXT   <- ","
+        INLINENEXT      <- "~"
+        WITHOUTWHITESPACES  <- "!"
+        TEXTNODE        <- ~(STEXTNODE / DTEXTNODE)
+        STEXTNODE       <- SQUOTE (!SQUOTE SCHAR)* SQUOTE
+        DTEXTNODE       <- DQUOTE (!DQUOTE DCHAR)* DQUOTE
+        SCHAR           <- (backslash SQUOTE) / (backslash backslash) / (backslash [tnr]) / .
+        DCHAR           <- (backslash DQUOTE) / (backslash backslash) / (backslash [tnr]) / .
+        SQUOTE          <- "'"
+        DQUOTE          <- "\""
 `));
 
 class LineMLParseException : Exception {
     private const ParseTree _ptree;
-    this(ParseTree ptree, string file = __FILE__, size_t line = __LINE__) pure nothrow @safe {
-        super("Parsing failure.", file, line);
+    this(ParseTree ptree, string file = __FILE__, size_t line = __LINE__) @trusted {
+        super("Parsing failure.\n" ~ ptree.toString(), file, line);
         this._ptree = ptree;
     }
     this(string mgs, ParseTree ptree, string file = __FILE__, size_t line = __LINE__) pure nothrow @safe {
@@ -46,6 +58,7 @@ class LineMLNode {
     private string _tagName, _id;
     private string[] _classes = [];
     private LineMLNode[] _children = [];
+    private string _content;
 
     @property string tagName() @safe pure nothrow {
         return _tagName;
@@ -64,6 +77,13 @@ class LineMLNode {
     }
     @property ref LineMLNode[] children() @safe pure nothrow {
         return _children;
+    }
+
+    @property string textContent() @safe pure nothrow {
+        return _content;
+    }
+    @property void textContent(string v) @safe pure nothrow {
+        _content = v;
     }
 
     override string toString() @safe pure nothrow {
@@ -100,6 +120,7 @@ enum LmlHtmlFormat {
 private string spaces4Indent = "    ";
 
 unittest {
+    import std.stdio;
     enum p = LineML("html");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".MARKUP"));
@@ -111,9 +132,11 @@ unittest {
     assert(p.children[0].children[0].children[0].children[0].name.endsWith(".TAGNAME"));
     assert(p.children[0].children[0].children[0].children[0].matches.length == 1);
     assert(p.children[0].children[0].children[0].children[0].matches[0] == "html");
+    writeln("Test - selector #1: Ok.");
 }
 
 unittest {
+    import std.stdio;
     import fluent.asserts;
     enum p = LineML("my-custom-tag");
     p.children.length.should.equal(1);
@@ -126,9 +149,11 @@ unittest {
     p.children[0].children[0].children[0].children[0].name.should.endWith(".TAGNAME");
     p.children[0].children[0].children[0].children[0].matches.length.should.equal(1);
     p.children[0].children[0].children[0].children[0].matches[0].should.equal("my-custom-tag");
+    writeln("Test - selector #2: Ok.");
 }
 
 unittest {
+    import std.stdio;
     import fluent.asserts;
     enum p = LineML("mycustomtag3434");
     p.children.length.should.equal(1);
@@ -141,9 +166,11 @@ unittest {
     p.children[0].children[0].children[0].children[0].name.should.endWith(".TAGNAME");
     p.children[0].children[0].children[0].children[0].matches.length.should.equal(1);
     p.children[0].children[0].children[0].children[0].matches[0].should.equal("mycustomtag3434");
+    writeln("Test - selector #3: Ok.");
 }
 
 unittest {
+    import std.stdio;
     enum p = LineML("#myId");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".MARKUP"));
@@ -155,9 +182,11 @@ unittest {
     assert(p.children[0].children[0].children[0].children[0].name.endsWith(".ID"));
     assert(p.children[0].children[0].children[0].children[0].matches.length == 1);
     assert(p.children[0].children[0].children[0].children[0].matches[0] == "#myId");
+    writeln("Test - selector #4: Ok.");
 }
 
 unittest {
+    import std.stdio;
     enum p = LineML(".myClass");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".MARKUP"));
@@ -169,9 +198,11 @@ unittest {
     assert(p.children[0].children[0].children[0].children[0].name.endsWith(".CLASS"));
     assert(p.children[0].children[0].children[0].children[0].matches.length == 1);
     assert(p.children[0].children[0].children[0].children[0].matches[0] == ".myClass");
+    writeln("Test - selector #5: Ok.");
 }
 
 unittest {
+    import std.stdio;
     enum p = LineML("p.myClass");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".MARKUP"));
@@ -186,9 +217,11 @@ unittest {
     assert(p.children[0].children[0].children[0].children[1].name.endsWith(".CLASS"));
     assert(p.children[0].children[0].children[0].children[1].matches.length == 1);
     assert(p.children[0].children[0].children[0].children[1].matches[0] == ".myClass");
+    writeln("Test - selector #6: Ok.");
 }
 
 unittest {
+    import std.stdio;
     enum p = LineML("p#asd");
     assert(p.children.length == 1);
     assert(p.children[0].name.endsWith(".MARKUP"));
@@ -203,9 +236,12 @@ unittest {
     assert(p.children[0].children[0].children[0].children[1].name.endsWith(".ID"));
     assert(p.children[0].children[0].children[0].children[1].matches.length == 1);
     assert(p.children[0].children[0].children[0].children[1].matches[0] == "#asd");
+    writeln("Test - selector #7: Ok.");
 }
 
 unittest {
+    import std.stdio;
+
     assert(!LineML("").successful);
     assert(!LineML("    ").successful);
     assert(LineML("foo").successful);
@@ -257,81 +293,90 @@ unittest {
     assert(!LineML("p#sdsf#zxc").successful);
     assert(!LineML(".ssd#sdsf#zxc").successful);
     assert(!LineML("#sdsf#zxc.ssd").successful);
+
+    writeln("Test - complex selectors: Ok.");
 }
 
 unittest {
+    import std.stdio;
+    import fluentasserts.core.base;
     assert(!LineML("#z, #f, .item,  .item").successful); // multiple top-level tags - illegal
     enum p = LineML("sometag(#z, #f, .item,  .item)");
-    assert(p.successful);
+    p.successful.should.equal(true);
 
-    assert(p.children.length == 1);
+    p.children.length.should.equal(1);
     assert(p.children[0].name.endsWith(".MARKUP"));
-    assert(p.children[0].children.length == 1);
+    p.children[0].children.length.should.equal(1);
     assert(p.children[0].children[0].name.endsWith(".TAG"));
     enum topTagChildren = p.children[0].children[0].children;
-    assert(topTagChildren.length == 2);
+    topTagChildren.length.should.equal(2); // Selector and Body.
     assert(topTagChildren[0].name.endsWith(".SELECTOR"));
-    assert(topTagChildren[0].children.length == 1);
+    topTagChildren[0].children.length.should.equal(1);
     assert(topTagChildren[0].children[0].name.endsWith(".TAGNAME"));
-    assert(topTagChildren[0].children[0].matches == ["sometag"]);
+    topTagChildren[0].children[0].matches.should.equal(["sometag"]);
 
     assert(topTagChildren[1].name.endsWith(".BODY"));
-    assert(topTagChildren[1].children.length == 1);
-    assert(topTagChildren[1].children[0].name.endsWith(".ANYTAGS"));
-    enum myTags = topTagChildren[1].children[0].children;
-    assert(myTags.length == 7);
+    topTagChildren[1].children.length.should.equal(1);
+    enum anytags = topTagChildren[1].children[0];
+    assert(anytags.name.endsWith(".ANYTAGS"));
+    enum myTags = anytags.children;
+    myTags.length.should.equal(10);
 
     assert(myTags[0].name.endsWith(".ANYTAG"));
-    assert(myTags[1].name.endsWith(".SPACES"));
-    assert(myTags[2].name.endsWith(".ANYTAG"));
-    assert(myTags[3].name.endsWith(".SPACES"));
-    assert(myTags[4].name.endsWith(".ANYTAG"));
+    assert(myTags[1].name.endsWith(".NEXTSEPARATOR"));
+    assert(myTags[2].name.endsWith(".SPACES"));
+    assert(myTags[3].name.endsWith(".ANYTAG"));
+    assert(myTags[4].name.endsWith(".NEXTSEPARATOR"));
     assert(myTags[5].name.endsWith(".SPACES"));
     assert(myTags[6].name.endsWith(".ANYTAG"));
+    assert(myTags[7].name.endsWith(".NEXTSEPARATOR"));
+    assert(myTags[8].name.endsWith(".SPACES"));
+    assert(myTags[9].name.endsWith(".ANYTAG"));
 
     foreach(ref child; myTags[0].children[0].children) {
         int found = 0;
         if (child.name.endsWith(".SELECTOR")) {
             found++;
-            assert(child.children.length == 1);
+            child.children.length.should.equal(1);
             assert(child.children[0].name.endsWith(".ID"));
-            assert(child.children[0].matches == ["#z"]);
+            child.children[0].matches.should.equal(["#z"]);
         }
-        assert(1 == found);
+        1.should.equal(found);
     }
 
-    foreach(ref child; myTags[2].children[0].children) {
+    foreach(ref child; myTags[3].children[0].children) {
         int found = 0;
         if (child.name.endsWith(".SELECTOR")) {
             found++;
-            assert(child.children.length == 1);
+            child.children.length.should.equal(1);
             assert(child.children[0].name.endsWith(".ID"));
-            assert(child.children[0].matches == ["#f"]);
+            child.children[0].matches.should.equal(["#f"]);
         }
-        assert(1 == found);
-    }
-
-    foreach(ref child; myTags[4].children[0].children) {
-        int found = 0;
-        if (child.name.endsWith(".SELECTOR")) {
-            found++;
-            assert(child.children.length == 1);
-            assert(child.children[0].name.endsWith(".CLASS"));
-            assert(child.children[0].matches == [".item"]);
-        }
-        assert(1 == found);
+        1.should.equal(found);
     }
 
     foreach(ref child; myTags[6].children[0].children) {
         int found = 0;
         if (child.name.endsWith(".SELECTOR")) {
             found++;
-            assert(child.children.length == 1);
+            child.children.length.should.equal(1);
             assert(child.children[0].name.endsWith(".CLASS"));
-            assert(child.children[0].matches == [".item"]);
+            child.children[0].matches.should.equal([".item"]);
         }
-        assert(1 == found);
+        1.should.equal(found);
     }
+
+    foreach(ref child; myTags[9].children[0].children) {
+        int found = 0;
+        if (child.name.endsWith(".SELECTOR")) {
+            found++;
+            child.children.length.should.equal(1);
+            assert(child.children[0].name.endsWith(".CLASS"));
+            child.children[0].matches.should.equal([".item"]);
+        }
+        1.should.equal(found);
+    }
+    writeln("Test - inner tags: Ok.");
 }
 
 unittest {
@@ -384,14 +429,48 @@ private T selectorToNode(T : LineMLNode)(ParseTree a) @safe {
     return result;
 }
 
+private string unescapeTextNode(string raw) @safe {
+    assert (raw.length >= 2);
+    auto mainPart = raw[1..($-1)];
+    dchar[] source = to!(dchar[])(mainPart);
+    dchar[] result = [];
+
+    for (int i = 0; i < source.length; i++) {
+        if (source[i] != '\\') {
+            result ~= source[i];
+        } else if (source[i+1] == '\'' || source[i+1] == '"') {
+            result ~= source[i+1];
+            i++;
+        } else if (source[i+1] == 't') {
+            result ~= '\t';
+            i++;
+        } else if (source[i+1] == 'n') {
+            result ~= '\n';
+            i++;
+        } else if (source[i+1] == 'r') {
+            result ~= '\r';
+            i++;
+        } else {
+            assert(0);
+        }
+    }
+
+    return to!string(result);
+}
+
 private T createNodeFromSelector(T : LineMLNode)(ParseTree a) @safe {
-    assert(a.children.length >= 1);
     if (a.name.endsWith(".TAG")) {
+        assert(a.children.length >= 1);
         assert(a.children[0].name.endsWith(".SELECTOR"));
         return selectorToNode!T(a.children[0]);
     } else if (a.name.endsWith(".REPEATER")) {
+        assert(a.children.length >= 1);
         assert(a.children[0].name.endsWith(".RSELECTOR"));
         return selectorToNode!T(a.children[0]);
+    } else if (a.name.endsWith(".TEXTNODE")) {
+        auto r = new T();
+        r.textContent = a.matches[0].unescapeTextNode;
+        return r;
     }
     return null;
 }
@@ -418,6 +497,8 @@ private ParseTree[] childrenTags(ParseTree a) @safe {
                             result ~= t;
                         }
                     }
+                } else if (t.name.endsWith(".TEXTNODE")) {
+                    result ~= t;
                 }
             }
         }
@@ -622,6 +703,11 @@ unittest {
 }
 
 private string openTag(LineMLNode node) {
+
+    if (node.textContent) {     // text node
+        return node.textContent;
+    }
+
     string result = "<";
     if (node.tagName is null) {
         result ~= "div";
@@ -642,6 +728,11 @@ private string openTag(LineMLNode node) {
 }
 
 private string closeTag(LineMLNode node) {
+
+    if (node.textContent) { // text node
+        return "";
+    }
+
     string result = "</";
     if (node.tagName is null) {
         result ~= "div";
@@ -657,6 +748,12 @@ private string parseTreeToHtml(LineMLNode rootNode, LmlHtmlFormat format) {
 
     class HtmlStackItem {
         LineMLNode node;
+
+        /++
+         + Index of the child being processed right now.
+         + (-1) means the initial state.
+         + (-2) means the tag has no children.
+         +/
         int childIndex = -1;
 
         this(LineMLNode n) {
@@ -738,4 +835,160 @@ unittest {
             "    </div>\n" ~
             "</div>\n";
     expected.should.equal(lmlToHtml(input, LmlHtmlFormat.SPACES_4));
+}
+
+unittest {
+    import fluentasserts.core.base;
+    LineML("foo").successful.should.equal(true);
+    LineML("'foo'").successful.should.equal(false);
+    LineML("foo('bar')").successful.should.equal(true);
+    LineML("foo(\"bar\")").successful.should.equal(true);
+    LineML("foo('ba'r')").successful.should.equal(false);
+    LineML("foo(\"ba\"r\")").successful.should.equal(false);
+    LineML("foo('ba\"r')").successful.should.equal(true);
+    LineML("foo(\"ba'r\")").successful.should.equal(true);
+    LineML("foo('b\"a\"r')").successful.should.equal(true);
+    LineML("foo(\"b'a'r\")").successful.should.equal(true);
+    LineML("foo('\"ba\"r')").successful.should.equal(true);
+    LineML("foo(\"'ba'r\")").successful.should.equal(true);
+    LineML("foo('\"bar\"')").successful.should.equal(true);
+    LineML("foo(\"'bar'\")").successful.should.equal(true);
+    LineML("foo('b\"ar\"')").successful.should.equal(true);
+    LineML("foo(\"b'ar'\")").successful.should.equal(true);
+
+    LineML("foo(\"valid \\\"text\\\" element\")").successful.should.equal(true);
+    LineML("foo(\"invalid \"text\" element\")").successful.should.equal(false);
+    LineML("foo('valid \\'text\\' element')").successful.should.equal(true);
+    LineML("foo('invalid 'text' element')").successful.should.equal(false);
+
+    LineML("foo(\"\\\"valid\\\" text element\")").successful.should.equal(true);
+    LineML("foo(\"\"invalid\" text element\")").successful.should.equal(false);
+    LineML("foo('\\'valid\\' text element')").successful.should.equal(true);
+    LineML("foo(''invalid' text element')").successful.should.equal(false);
+
+    LineML("foo(\"valid text \\\"element\\\"\")").successful.should.equal(true);
+    LineML("foo(\"invalid text \"element\"\")").successful.should.equal(false);
+    LineML("foo('valid text \\'element\\'')").successful.should.equal(true);
+    LineML("foo('invalid text 'element'')").successful.should.equal(false);
+
+    LineML("#d(#z, #f(.item,.item))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(.item,.item))").successful.should.equal(true);
+    LineML("#d(#z, #f(.item, .item))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(.item, .item))").successful.should.equal(true);
+    LineML("#d(#z, #f(.item~.item))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(.item~.item))").successful.should.equal(true);
+    LineML("#d(#z, #f(.item~ .item))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(.item~ .item))").successful.should.equal(true);
+    LineML("#d(#z, #f(.item ~ .item))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(.item ~ .item))").successful.should.equal(true);
+    LineML("#d(#z, #f(.item , .item))").successful.should.equal(false);
+    LineML("#d(#z, .f:2(.item , .item))").successful.should.equal(false);
+
+    LineML("#d(#z, #f(     .item,   .item  ))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(   .item,    .item   ))").successful.should.equal(true);
+    LineML("#d(#z, #f(     .item   ~    .item   ))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(   .item    ~   .item   ))").successful.should.equal(true);
+    LineML("#d(#z, #f(  \n   .item, \n  .item  \n  ))").successful.should.equal(true);
+    LineML("#d(#z, .f:2( \n  .item, \n   .item \n  ))").successful.should.equal(true);
+    LineML("#d(#z, #f(  \n   .item  \n   ~  \n  .item \n  ))").successful.should.equal(true);
+    LineML("#d(#z, .f:2( \n  .item  \n  ~ \n  .item \n  ))").successful.should.equal(true);
+
+    LineML("#d(#z, #f(!.item, .item))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(!.item, .item))").successful.should.equal(true);
+    LineML("#d(#z, #f(.item, .item!))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(.item, .item!))").successful.should.equal(true);
+    LineML("#d(#z, #f(!.item, .item!))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(!.item, .item!))").successful.should.equal(true);
+
+    LineML("#d(#z, #f(!    .item,  .item   ))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(!  .item,  .item   ))").successful.should.equal(true);
+    LineML("#d(#z, #f(     .item,  .item  !))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(   .item,  .item  !))").successful.should.equal(true);
+    LineML("#d(#z, #f(!    .item,  .item  !))").successful.should.equal(true);
+    LineML("#d(#z, .f:2(!  .item,  .item  !))").successful.should.equal(true);
+
+    LineML("#d(#z, #f( !   .item,  .item   ))").successful.should.equal(false);
+    LineML("#d(#z, .f:2( ! .item,  .item   ))").successful.should.equal(false);
+    LineML("#d(#z, #f(     .item,  .item ! ))").successful.should.equal(false);
+    LineML("#d(#z, .f:2(   .item,  .item ! ))").successful.should.equal(false);
+    LineML("#d(#z, #f(!    .item,  .item ! ))").successful.should.equal(false);
+    LineML("#d(#z, .f:2(!  .item,  .item ! ))").successful.should.equal(false);
+    LineML("#d(#z, #f( !   .item,  .item ! ))").successful.should.equal(false);
+    LineML("#d(#z, .f:2( ! .item,  .item ! ))").successful.should.equal(false);
+}
+
+unittest {
+    import std.stdio;
+    import fluentasserts.core.base;
+    auto input = ".container(.row(.col-lg-12('Привет.', ul(li:2), 'Привееет!')))";
+    auto expected = "" ~
+            "<div class=\"container\">\n" ~
+            "    <div class=\"row\">\n" ~
+            "        <div class=\"col-lg-12\">\n" ~
+            "            Привет.\n" ~
+            "            <ul>\n" ~
+            "                <li></li>\n" ~
+            "                <li></li>\n" ~
+            "            </ul>\n" ~
+            "            Привееет!\n" ~
+            "        </div>\n" ~
+            "    </div>\n" ~
+            "</div>\n";
+    auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
+    actual.should.equal(expected);
+    writeln("Test - hello-ul-hello: Ok.");
+}
+
+unittest {
+    import fluentasserts.core.base;
+    auto input = ".container(a(span('Привет.'), span('Привееет!')))"; // Single text node is automatically inlined.
+    auto expected = "" ~
+            "<div class=\"container\">\n" ~
+            "    <a>\n" ~
+            "        <span>Привет.</span>\n" ~
+            "        <span>Привееет!</span>\n" ~
+            "    </a>\n" ~
+            "</div>\n";
+    auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
+    actual.should.equal(expected);
+}
+
+unittest {
+    import fluentasserts.core.base;
+    auto input = ".container(a(span(\"Привет.\"), span(\"Привееет!\")))";
+    auto expected = "" ~
+            "<div class=\"container\">\n" ~
+            "    <a>\n" ~
+            "        <span>Привет.</span>\n" ~
+            "        <span>Привееет!</span>\n" ~
+            "    </a>\n" ~
+            "</div>\n";
+    auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
+    actual.should.equal(expected);
+}
+
+unittest {
+    import fluentasserts.core.base;
+    auto input = ".container(a(span('Привет.\"), span(\"Привееет!')))"; // Bad quotes.
+    auto expected = "" ~
+            "<div class=\"container\">\n" ~
+            "    <a>\n" ~
+            "        <span>Привет.\"), span(\"Привееет!</span>\n" ~
+            "    </a>\n" ~
+            "</div>\n";
+    auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
+    actual.should.equal(expected);
+}
+
+unittest {
+    import fluentasserts.core.base;
+    auto input = ".container(a(span(\"Привет.'), span('Привееет!\")))"; // Bad quotes.
+    auto expected = "" ~
+            "<div class=\"container\">\n" ~
+            "    <a>\n" ~
+            "        <span>Привет.'), span('Привееет!</span>\n" ~
+            "    </a>\n" ~
+            "</div>\n";
+    auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
+    actual.should.equal(expected);
 }
