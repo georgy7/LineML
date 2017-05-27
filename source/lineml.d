@@ -781,14 +781,16 @@ private string parseTreeToHtml(LineMLNode rootNode, LmlHtmlFormat format) {
     while (stack.length > 0) {
         auto current = stack[$-1];
         if (current.childIndex == -1) {
-            if (format == LmlHtmlFormat.SPACES_4) {
+            if (format == LmlHtmlFormat.SPACES_4 &&
+                    !(stack.length >= 2 && stack[$-2].node.children.length == 1 && stack[$-1].node.textContent)) {
                 foreach (i; 0 .. (stack.length - 1)) {
                     result ~= spaces4Indent;
                 }
             }
             result ~= openTag(current.node);
             if (stack[$-1].node.children.length > 0) {
-                if (format == LmlHtmlFormat.SPACES_4) {
+                if (format == LmlHtmlFormat.SPACES_4 &&
+                        !(stack[$-1].node.children.length == 1 && stack[$-1].node.children[0].textContent)) {
                     result ~= "\n";
                 }
                 stack[$-1].childIndex++;
@@ -796,13 +798,15 @@ private string parseTreeToHtml(LineMLNode rootNode, LmlHtmlFormat format) {
                 stack[$-1].childIndex = -2;
             }
         } else if (current.childIndex <= -2) {
-            if (format == LmlHtmlFormat.SPACES_4 && current.childIndex == -3) {
+            if (format == LmlHtmlFormat.SPACES_4 && current.childIndex == -3 &&
+                    !(stack[$-1].node.children.length == 1 && stack[$-1].node.children[0].textContent)) {
                 foreach (i; 0 .. (stack.length - 1)) {
                     result ~= spaces4Indent;
                 }
             }
             result ~= closeTag(current.node);
-            if (format == LmlHtmlFormat.SPACES_4) {
+            if (format == LmlHtmlFormat.SPACES_4 &&
+                    !(stack.length >= 2 && stack[$-2].node.children.length == 1 && stack[$-1].node.textContent)) {
                 result ~= "\n";
             }
             stack.length--;
