@@ -380,6 +380,7 @@ unittest {
 }
 
 unittest {
+    import std.stdio;
     assert(!LineML("foo:5").successful); // multiple top-level tags - illegal
     assert(!LineML("#foo:5").successful);
     assert(!LineML(".foo:5").successful);
@@ -401,6 +402,7 @@ unittest {
     assert(!LineML("#d(#z, #f(.qw, .thing:45(.asd, p:8(), .sd)))").successful); // empty parentheses - illegal
     assert(LineML("#d(#z, #f(.qw, .thing:45(.asd, p:8(.sdf), .sd)))").successful);
     assert(!LineML("#d(#z, #f(.qw, .thing:45(.asd, p:8(#sdf), .sd)))").successful); // ID inside the repeating tag - illegal
+    writeln("Test - repeaters: Ok.");
 }
 
 private ParseTree lmlTrusted(string markup) @trusted {
@@ -578,15 +580,18 @@ T lmlToNode(T : LineMLNode)(string markup) @trusted {
 }
 
 unittest {
+    import std.stdio;
     auto input = "#d";
     auto result = lmlToNode!LineMLNode(input);
     assert(result.id == "d");
     assert(result.children.length == 0);
     assert(result.classes.length == 0);
     assert(result.tagName is null);
+    writeln("Test - id selector has tagName==null: Ok.");
 }
 
 unittest {
+    import std.stdio;
     auto input = ".d";
     auto result = lmlToNode!LineMLNode(input);
     assert(result.id is null);
@@ -594,18 +599,22 @@ unittest {
     assert(result.classes.length == 1);
     assert(result.classes[0] == "d");
     assert(result.tagName is null);
+    writeln("Test - class selector has tagName==null: Ok.");
 }
 
 unittest {
+    import std.stdio;
     auto input = "d";
     auto result = lmlToNode!LineMLNode(input);
     assert(result.id is null);
     assert(result.children.length == 0);
     assert(result.classes.length == 0);
     assert(result.tagName == "d");
+    writeln("Test - simple selector has non-null tagName: Ok.");
 }
 
 unittest {
+    import std.stdio;
     auto input = ".foo.bar.zxcv";
     auto result = lmlToNode!LineMLNode(input);
     assert(result.id is null);
@@ -615,9 +624,11 @@ unittest {
     assert(result.classes.count("bar") > 0);
     assert(result.classes.count("zxcv") > 0);
     assert(result.tagName is null);
+    writeln("Test - complex selector with classes only has tagName==null: Ok.");
 }
 
 unittest {
+    import std.stdio;
     auto input = "#d(#z, #f(.item, .item, .item, .item, .item))";
     auto result = lmlToNode!LineMLNode(input);
     assert(result.id == "d");
@@ -633,9 +644,11 @@ unittest {
     assert(items[2].classes == ["item"]);
     assert(items[3].classes == ["item"]);
     assert(items[4].classes == ["item"]);
+    writeln("Test - five items: Ok.");
 }
 
 unittest {
+    import std.stdio;
     auto input = "#d(#z, #f(.item:5))";
     auto result = lmlToNode!LineMLNode(input);
     assert(result.id == "d");
@@ -651,6 +664,7 @@ unittest {
     assert(items[2].classes == ["item"]);
     assert(items[3].classes == ["item"]);
     assert(items[4].classes == ["item"]);
+    writeln("Test - five items, made with repeater: Ok.");
 }
 
 private class MyTestNode : LineMLNode {
@@ -665,6 +679,7 @@ private class MyTestNode : LineMLNode {
 }
 
 unittest {
+    import std.stdio;
     auto input = "#d(#z, #f(.item:5))";
     auto result = lmlToNode!MyTestNode(input);
 
@@ -700,6 +715,7 @@ unittest {
 
     (cast(MyTestNode) items[4]).myField = "Some text";
     assert("Some text" == (cast(MyTestNode) items[4]).myField);
+    writeln("Test - using LineMLNode subclass: Ok.");
 }
 
 private string openTag(LineMLNode node) {
@@ -811,6 +827,7 @@ auto lmlToHtml(string markup, LmlHtmlFormat format) {
 }
 
 unittest {
+    import std.stdio;
     import fluentasserts.core.base;
     auto input = "#d(#z, #f(.item, .item, .item, .item, .item))";
     auto expected = "<div id=\"d\"><div id=\"z\"></div><div id=\"f\">" ~
@@ -818,9 +835,11 @@ unittest {
             "<div class=\"item\"></div><div class=\"item\"></div>" ~
             "<div class=\"item\"></div></div></div>";
     expected.should.equal(lmlToHtml(input, LmlHtmlFormat.LINE));
+    writeln("Test - convertion to XML (single line): Ok.");
 }
 
 unittest {
+    import std.stdio;
     import fluentasserts.core.base;
     auto input = "#d(#z, #f(.item, .item, .item, .item, .item))";
     auto expected = "" ~
@@ -835,9 +854,11 @@ unittest {
             "    </div>\n" ~
             "</div>\n";
     expected.should.equal(lmlToHtml(input, LmlHtmlFormat.SPACES_4));
+    writeln("Test - convertion to XML (indented with 4 spaces): Ok.");
 }
 
 unittest {
+    import std.stdio;
     import fluentasserts.core.base;
     LineML("foo").successful.should.equal(true);
     LineML("'foo'").successful.should.equal(false);
@@ -915,6 +936,7 @@ unittest {
     LineML("#d(#z, .f:2(!  .item,  .item ! ))").successful.should.equal(false);
     LineML("#d(#z, #f( !   .item,  .item ! ))").successful.should.equal(false);
     LineML("#d(#z, .f:2( ! .item,  .item ! ))").successful.should.equal(false);
+    writeln("Test - parsing the text nodes: Ok.");
 }
 
 unittest {
@@ -940,6 +962,7 @@ unittest {
 }
 
 unittest {
+    import std.stdio;
     import fluentasserts.core.base;
     auto input = ".container(a(span('Привет.'), span('Привееет!')))"; // Single text node is automatically inlined.
     auto expected = "" ~
@@ -951,9 +974,11 @@ unittest {
             "</div>\n";
     auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
     actual.should.equal(expected);
+    writeln("Test - the only child text node has no whitespace on its sides (single quote): Ok.");
 }
 
 unittest {
+    import std.stdio;
     import fluentasserts.core.base;
     auto input = ".container(a(span(\"Привет.\"), span(\"Привееет!\")))";
     auto expected = "" ~
@@ -965,9 +990,11 @@ unittest {
             "</div>\n";
     auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
     actual.should.equal(expected);
+    writeln("Test - the only child text node has no whitespace on its sides: Ok.");
 }
 
 unittest {
+    import std.stdio;
     import fluentasserts.core.base;
     auto input = ".container(a(span('Привет.\"), span(\"Привееет!')))"; // Bad quotes.
     auto expected = "" ~
@@ -978,9 +1005,11 @@ unittest {
             "</div>\n";
     auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
     actual.should.equal(expected);
+    writeln("Test - bad quotes example #1: Ok.");
 }
 
 unittest {
+    import std.stdio;
     import fluentasserts.core.base;
     auto input = ".container(a(span(\"Привет.'), span('Привееет!\")))"; // Bad quotes.
     auto expected = "" ~
@@ -991,4 +1020,5 @@ unittest {
             "</div>\n";
     auto actual = lmlToHtml(input, LmlHtmlFormat.SPACES_4);
     actual.should.equal(expected);
+    writeln("Test - bad quotes example #2: Ok.");
 }
