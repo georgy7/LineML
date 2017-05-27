@@ -4,6 +4,7 @@ import pegged.grammar;
 import std.exception;
 import std.algorithm.searching;
 import std.string;
+import std.conv;
 
 mixin(grammar(`
     LineML:
