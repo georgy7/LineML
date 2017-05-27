@@ -43,7 +43,6 @@ into this:
 
 So, the language does not support
 
-* tag content,
 * custom attributes.
 
 ### More examples
